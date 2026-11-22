@@ -2,25 +2,27 @@
 (function(){
  const estado=document.getElementById('estado'),fala=document.getElementById('fala'),botao=document.getElementById('microfone');
  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- let nonce='',conectado=false,ouvindo=false,rec=null;
- function enviar(tipo,texto){if(window.opener&&!window.opener.closed)window.opener.postMessage({app:'jarvis-voz-v2',tipo,nonce,texto},'*');}
+ let nonce='',conectado=false,ouvindo=false,rec=null,origemPainel='*';
+ function enviar(tipo,texto){if(window.opener&&!window.opener.closed)window.opener.postMessage({app:'jarvis-voz-v2',tipo,nonce,texto},origemPainel);}
  window.addEventListener('message',function(event){
   if(!window.opener||event.source!==window.opener)return;
-  const m=event.data;if(!m||m.app!=='jarvis-voz-v2'||m.tipo!=='ready'||!/^[0-9a-f]{48}$/.test(m.nonce||''))return;
-  nonce=m.nonce;conectado=true;estado.textContent='✓ Conectado ao JARVIS';estado.className='ok';
+  const m=event.data;if(!m||m.app!=='jarvis-voz-v2'||!/^[0-9a-f]{48}$/.test(m.nonce||''))return;
+  if(m.tipo==='ouvir_resposta'&&conectado&&m.nonce===nonce){fala.textContent='Sua vez, senhor. Pode responder.';if(!ouvindo)iniciarEscuta();return;}
+  if(m.tipo!=='ready')return;
+  origemPainel=event.origin;nonce=m.nonce;conectado=true;estado.textContent='✓ Conectado ao JARVIS';estado.className='ok';
   botao.disabled=!SpeechRecognition;fala.textContent=SpeechRecognition?'Clique no botão e fale naturalmente.':'Reconhecimento indisponível neste navegador.';
  });
  if(!window.opener){estado.textContent='Abra esta janela pelo botão Falar com JARVIS no painel.';}
  else enviar('hello','');
- botao.onclick=function(){
-  if(!conectado)return;
-  if(ouvindo&&rec){rec.stop();return;}
+ function iniciarEscuta(){
+  if(!conectado||!SpeechRecognition||ouvindo)return;
   rec=new SpeechRecognition();rec.lang='pt-BR';rec.interimResults=false;rec.continuous=false;
   rec.onstart=function(){ouvindo=true;botao.textContent='■ Parar';fala.textContent='Ouvindo, senhor...';};
   rec.onresult=function(e){const t=e.results[0][0].transcript;fala.textContent='Você: '+t;enviar('transcricao',t);};
   rec.onerror=function(e){fala.textContent='Falha no reconhecimento: '+e.error;enviar('status','Microfone: '+e.error);};
   rec.onend=function(){ouvindo=false;botao.textContent='🎙 Falar com JARVIS';};
-  try{rec.start();}catch(e){fala.textContent=e.message;}
- };
+  try{rec.start();}catch(e){fala.textContent='Clique no microfone para responder: '+e.message;}
+ }
+ botao.onclick=function(){if(ouvindo&&rec){rec.stop();return;}iniciarEscuta();};
 })();
 </script></body></html>
