@@ -1,11 +1,26 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>JARVIS</title>
-</head>
-<body>
-  <h1>JARVIS — Sistema de Voz</h1>
-  <p>Preparando interface...</p>
-</body>
-</html>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>JARVIS — Microfone</title><style>*{box-sizing:border-box}body{margin:0;background:#09111f;color:#eaf2ff;font:16px Arial,sans-serif}.wrap{max-width:580px;margin:auto;padding:26px}.card{background:#13233a;border:1px solid #30445f;border-radius:16px;padding:22px;margin-top:20px}button{border:0;border-radius:12px;padding:15px 20px;color:white;background:#2563eb;font-weight:700;cursor:pointer;width:100%}button:disabled{opacity:.5}.muted{color:#a2b3ca;line-height:1.6}.result{padding:15px;background:#0b1728;border-radius:10px;min-height:65px;white-space:pre-wrap;overflow-wrap:anywhere}.ok{color:#4adea3}.warn{color:#fbbf24}</style></head><body><main class="wrap"><h1>J.A.R.V.I.S.</h1><p class="muted">Microfone independente · conversa integrada ao painel</p><div class="card"><p id="estado" class="warn">Conectando ao painel...</p><button id="microfone" disabled>🎙 Falar com JARVIS</button><p id="fala" class="result">Aguarde a conexão.</p><p class="muted">A transcrição é enviada apenas à janela do JARVIS que abriu esta página. O painel processa a pergunta e reproduz a resposta com a voz Rami.</p></div></main><script>
+(function(){
+ const estado=document.getElementById('estado'),fala=document.getElementById('fala'),botao=document.getElementById('microfone');
+ const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+ let nonce='',conectado=false,ouvindo=false,rec=null;
+ function enviar(tipo,texto){if(window.opener&&!window.opener.closed)window.opener.postMessage({app:'jarvis-voz-v2',tipo,nonce,texto},'*');}
+ window.addEventListener('message',function(event){
+  if(!window.opener||event.source!==window.opener)return;
+  const m=event.data;if(!m||m.app!=='jarvis-voz-v2'||m.tipo!=='ready'||!/^[0-9a-f]{48}$/.test(m.nonce||''))return;
+  nonce=m.nonce;conectado=true;estado.textContent='✓ Conectado ao JARVIS';estado.className='ok';
+  botao.disabled=!SpeechRecognition;fala.textContent=SpeechRecognition?'Clique no botão e fale naturalmente.':'Reconhecimento indisponível neste navegador.';
+ });
+ if(!window.opener){estado.textContent='Abra esta janela pelo botão Falar com JARVIS no painel.';}
+ else enviar('hello','');
+ botao.onclick=function(){
+  if(!conectado)return;
+  if(ouvindo&&rec){rec.stop();return;}
+  rec=new SpeechRecognition();rec.lang='pt-BR';rec.interimResults=false;rec.continuous=false;
+  rec.onstart=function(){ouvindo=true;botao.textContent='■ Parar';fala.textContent='Ouvindo, senhor...';};
+  rec.onresult=function(e){const t=e.results[0][0].transcript;fala.textContent='Você: '+t;enviar('transcricao',t);};
+  rec.onerror=function(e){fala.textContent='Falha no reconhecimento: '+e.error;enviar('status','Microfone: '+e.error);};
+  rec.onend=function(){ouvindo=false;botao.textContent='🎙 Falar com JARVIS';};
+  try{rec.start();}catch(e){fala.textContent=e.message;}
+ };
+})();
+</script></body></html>
